@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "InputActionValue.h"
 #include "ShooterCharacter.generated.h"
 
 UCLASS()
@@ -18,6 +19,18 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+
+	// Default Player Mapping Context
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")	
+	class UInputMappingContext* PlayerMappingContext;
+
+	// Function to move in all directions
+	void Move(const FInputActionValue& Value);
+
+	// Input Action Move
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+	class UInputAction* MoveAction;
+
 
 public:	
 	// Called every frame
