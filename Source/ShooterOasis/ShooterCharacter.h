@@ -24,12 +24,23 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")	
 	class UInputMappingContext* PlayerMappingContext;
 
-	// Function to move in all directions
-	void Move(const FInputActionValue& Value);
-
 	// Input Action Move
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	class UInputAction* MoveAction;
+
+	// Action to turn - yaw and look up and down together
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+	UInputAction* LookAroundAction;
+
+	// Action to jump
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+	UInputAction* JumpAction;
+
+	// Function to move in all directions
+	void Move(const FInputActionValue& Value);
+
+	/* Look up or down base and in yaw by using mouse movement or right gamepad y movement */
+	void LookAround(const FInputActionValue& Value);
 
 
 public:	
