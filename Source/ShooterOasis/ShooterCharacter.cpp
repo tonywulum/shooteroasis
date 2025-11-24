@@ -11,6 +11,10 @@
 #include "Kismet/GameplayStatics.h"
 #include "Sound/SoundCue.h"
 
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraComponent.h"
+#include "Engine/SkeletalMeshSocket.h"
+
 
 // Sets default values
 AShooterCharacter::AShooterCharacter()
@@ -90,6 +94,20 @@ void AShooterCharacter::ShootButttonPressed()
 	if (ShootSound)
 	{
 		UGameplayStatics::PlaySoundAtLocation(this, ShootSound, GetActorLocation());
+	}
+
+	if (!MuzzleFlashNiagara) return;
+
+	if (const USkeletalMeshSocket* BarrelSocket = GetMesh()->GetSocketByName(TEXT("BarrelSocket")))
+	{
+		const FTransform SocketTransform = BarrelSocket->GetSocketTransform(GetMesh());
+
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			GetWorld(),
+			MuzzleFlashNiagara,
+			SocketTransform.GetLocation(),
+			SocketTransform.Rotator()
+		);
 	}
 }
 

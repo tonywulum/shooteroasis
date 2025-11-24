@@ -10,7 +10,9 @@
 class UInputMappingContext;
 class UInputAction;
 class USpringArmComponent;
-class  UCameraComponent;
+class UCameraComponent;
+class USoundCue;
+class UNiagaraSystem;
 
 UCLASS()
 class SHOOTEROASIS_API AShooterCharacter : public ACharacter
@@ -49,8 +51,11 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> ShootEndAction = nullptr;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Sounds, meta=(AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Attack, meta=(AllowPrivateAccess = "true"))
 	TObjectPtr<USoundCue> ShootSound = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Attack, meta=(AllowPrivateAccess = "true"))
+	TObjectPtr<UNiagaraSystem> MuzzleFlashNiagara = nullptr;
 
 	// Function to move in all directions
 	void Move(const FInputActionValue& Value);
@@ -63,8 +68,6 @@ protected:
 
 	// Method call when releasing the shooting button
 	void ShootButtonReleased();
-
-
 
 public:	
 	// Called every frame
