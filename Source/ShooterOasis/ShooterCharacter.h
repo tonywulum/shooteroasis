@@ -13,6 +13,7 @@ class USpringArmComponent;
 class UCameraComponent;
 class USoundCue;
 class UNiagaraSystem;
+class UAnimMontage;
 
 UCLASS()
 class SHOOTEROASIS_API AShooterCharacter : public ACharacter
@@ -56,6 +57,9 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Attack, meta=(AllowPrivateAccess = "true"))
 	TObjectPtr<UNiagaraSystem> MuzzleFlashNiagara = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Attack, meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UAnimMontage> HipFireMontage = nullptr;
 
 	// Function to move in all directions
 	void Move(const FInputActionValue& Value);

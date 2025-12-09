@@ -15,17 +15,19 @@
 #include "NiagaraComponent.h"
 #include "Engine/SkeletalMeshSocket.h"
 
+#include "Animation/AnimInstance.h"
+
 
 // Sets default values
 AShooterCharacter::AShooterCharacter()
 {
- 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
-	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom")); 
+	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(RootComponent);
 	CameraBoom->TargetArmLength = 400.0f;
-	CameraBoom->bUsePawnControlRotation = true;		
+	CameraBoom->bUsePawnControlRotation = true;
 
 	PlayerCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("PlayerCamera"));
 	PlayerCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
@@ -36,7 +38,7 @@ AShooterCharacter::AShooterCharacter()
 	bUseControllerRotationRoll = false;
 
 	GetCharacterMovement()->bOrientRotationToMovement = true;
-	GetCharacterMovement()->RotationRate = FRotator(0.f, 540.f, 0.f); 
+	GetCharacterMovement()->RotationRate = FRotator(0.f, 540.f, 0.f);
 	GetCharacterMovement()->JumpZVelocity = 500.f;
 	GetCharacterMovement()->AirControl = 0.2f;
 
@@ -54,7 +56,7 @@ void AShooterCharacter::BeginPlay()
 			Subsystem->AddMappingContext(PlayerMappingContext, 0);
 		}
 	}
-	
+
 }
 
 void AShooterCharacter::Move(const FInputActionValue& Value)
@@ -109,6 +111,20 @@ void AShooterCharacter::ShootButttonPressed()
 			SocketTransform.Rotator()
 		);
 	}
+
+	static const FName BeginFireSectionName = FName("BeginFire");
+	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+	{
+		if (HipFireMontage)
+		{
+			if (!AnimInstance->Montage_IsPlaying(HipFireMontage))
+			{
+				AnimInstance->Montage_Play(HipFireMontage);
+			}
+			AnimInstance->Montage_JumpToSection(BeginFireSectionName, HipFireMontage);
+		}
+	}
+
 }
 
 void AShooterCharacter::ShootButtonReleased()
