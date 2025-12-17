@@ -16,6 +16,7 @@
 #include "Engine/SkeletalMeshSocket.h"
 
 #include "Animation/AnimInstance.h"
+#include "DrawDebugHelpers.h"
 
 
 // Sets default values
@@ -110,6 +111,42 @@ void AShooterCharacter::ShootButttonPressed()
 			SocketTransform.GetLocation(),
 			SocketTransform.Rotator()
 		);
+
+		FHitResult HitResult;
+		GetWorld()->LineTraceSingleByChannel(
+			OUT HitResult,
+			SocketTransform.GetLocation(),
+			SocketTransform.GetLocation() + SocketTransform.GetRotation().GetForwardVector() * 5000.f,
+			ECollisionChannel::ECC_Visibility
+		);
+
+		if (HitResult.bBlockingHit)
+		{
+			DrawDebugLine(
+				GetWorld(),
+				SocketTransform.GetLocation(),
+				HitResult.Location,
+				FColor::Red,
+				false,
+				2.0f
+			);
+
+			DrawDebugPoint(
+				GetWorld(),
+				HitResult.Location,
+				20.f,
+				FColor::Green,
+				false,
+				2.0f
+			);
+
+			UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+				GetWorld(),
+				MuzzleFlashNiagara,
+				HitResult.Location,
+				SocketTransform.Rotator()
+			);
+		}
 	}
 
 	static const FName BeginFireSectionName = FName("BeginFire");
