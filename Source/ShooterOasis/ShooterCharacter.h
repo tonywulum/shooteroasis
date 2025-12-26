@@ -61,6 +61,10 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Attack, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UAnimMontage> HipFireMontage = nullptr;
 
+	/* Bullet impact Niagara System on Surface*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Attack, meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UNiagaraSystem> ImpactNiagara = nullptr;
+
 	// Function to move in all directions
 	void Move(const FInputActionValue& Value);
 

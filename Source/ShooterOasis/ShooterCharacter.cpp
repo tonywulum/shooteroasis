@@ -140,12 +140,15 @@ void AShooterCharacter::ShootButttonPressed()
 				2.0f
 			);
 
-			UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-				GetWorld(),
-				MuzzleFlashNiagara,
-				HitResult.Location,
-				SocketTransform.Rotator()
-			);
+			if (ImpactNiagara)
+			{
+				UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+					GetWorld(),
+					ImpactNiagara,
+					HitResult.Location,
+					HitResult.ImpactNormal.Rotation()
+				);
+			}
 		}
 	}
 
