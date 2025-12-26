@@ -65,6 +65,16 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Attack, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UNiagaraSystem> ImpactNiagara = nullptr;
 
+	/* Add Decal Over Impacted Surface */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Attack, meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UMaterialInterface> ImpactDecalMat = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Attack, meta = (AllowPrivateAccess = "true"))
+	FVector ImpactDecalSize = FVector(8.f, 8.f, 8.f);	
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Attack, meta = (AllowPrivateAccess = "true"))
+	float ImpactDecalLifeSpan = 5.f;
+
 	// Function to move in all directions
 	void Move(const FInputActionValue& Value);
 

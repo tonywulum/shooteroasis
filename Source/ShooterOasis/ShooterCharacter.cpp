@@ -149,6 +149,18 @@ void AShooterCharacter::ShootButttonPressed()
 					HitResult.ImpactNormal.Rotation()
 				);
 			}
+
+			if (ImpactDecalMat)
+			{
+				UGameplayStatics::SpawnDecalAtLocation(
+					GetWorld(),
+					ImpactDecalMat,
+					ImpactDecalSize,
+					HitResult.Location,
+					HitResult.ImpactNormal.Rotation(),
+					ImpactDecalLifeSpan
+				);
+			}
 		}
 	}
 
