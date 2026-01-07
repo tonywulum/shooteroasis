@@ -74,6 +74,10 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Attack, meta = (AllowPrivateAccess = "true"))
 	float ImpactDecalLifeSpan = 5.f;
+	
+	/* Bullet Beam Niagara System */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Attack, meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UNiagaraSystem> BulletBeamNiagara = nullptr;
 
 	// Function to move in all directions
 	void Move(const FInputActionValue& Value);

@@ -92,75 +92,57 @@ void AShooterCharacter::LookAround(const FInputActionValue& Value)
 
 void AShooterCharacter::ShootButttonPressed()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Shoot button pressed"));
 
 	if (ShootSound)
 	{
 		UGameplayStatics::PlaySoundAtLocation(this, ShootSound, GetActorLocation());
 	}
 
-	if (!MuzzleFlashNiagara) return;
+	const USkeletalMeshSocket* BarrelSocket = GetMesh()->GetSocketByName(TEXT("BarrelSocket"));
+	if (!BarrelSocket) return;
 
-	if (const USkeletalMeshSocket* BarrelSocket = GetMesh()->GetSocketByName(TEXT("BarrelSocket")))
+	const FTransform SocketTransform = BarrelSocket->GetSocketTransform(GetMesh());
+	const FVector TraceStart = SocketTransform.GetLocation();
+	const FVector TraceEnd = TraceStart + (SocketTransform.GetRotation().GetForwardVector() * 10000.f);
+
+	if (MuzzleFlashNiagara)
 	{
-		const FTransform SocketTransform = BarrelSocket->GetSocketTransform(GetMesh());
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), MuzzleFlashNiagara, SocketTransform.GetLocation(), SocketTransform.GetRotation().Rotator());
+	}
 
-		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-			GetWorld(),
-			MuzzleFlashNiagara,
-			SocketTransform.GetLocation(),
-			SocketTransform.Rotator()
-		);
+	// Trace (ignore self)
+	FHitResult HitResult;
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(ShootTrace), true);
+	Params.AddIgnoredActor(this);
 
-		FHitResult HitResult;
-		GetWorld()->LineTraceSingleByChannel(
-			OUT HitResult,
-			SocketTransform.GetLocation(),
-			SocketTransform.GetLocation() + SocketTransform.GetRotation().GetForwardVector() * 5000.f,
-			ECollisionChannel::ECC_Visibility
-		);
+	const bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_Visibility, Params);
 
-		if (HitResult.bBlockingHit)
+	const FVector End = bHit ? HitResult.Location : TraceEnd;
+
+	// Spawn beam (instant tracer)
+	if (BulletBeamNiagara)
+	{
+		UNiagaraComponent* BeamComp = UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), BulletBeamNiagara, TraceStart, SocketTransform.Rotator());
+		
+		if (BeamComp)
 		{
-			DrawDebugLine(
-				GetWorld(),
-				SocketTransform.GetLocation(),
-				HitResult.Location,
-				FColor::Red,
-				false,
-				2.0f
-			);
+			BeamComp->SetVectorParameter(FName("Start"), TraceStart);
+			BeamComp->SetVectorParameter(FName("Target"), End);
+		}
+	}
 
-			DrawDebugPoint(
-				GetWorld(),
-				HitResult.Location,
-				20.f,
-				FColor::Green,
-				false,
-				2.0f
-			);
+	// Impact VFX + decal only if we hit something
+	if (bHit)
+	{
+		if (ImpactNiagara)
+		{
+			UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), ImpactNiagara, HitResult.Location, HitResult.ImpactNormal.Rotation());
+		}
+		if (ImpactDecalMat)
+		{
+			const FVector N = HitResult.ImpactNormal.GetSafeNormal();
 
-			if (ImpactNiagara)
-			{
-				UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-					GetWorld(),
-					ImpactNiagara,
-					HitResult.Location,
-					HitResult.ImpactNormal.Rotation()
-				);
-			}
-
-			if (ImpactDecalMat)
-			{
-				UGameplayStatics::SpawnDecalAtLocation(
-					GetWorld(),
-					ImpactDecalMat,
-					ImpactDecalSize,
-					HitResult.Location,
-					HitResult.ImpactNormal.Rotation(),
-					ImpactDecalLifeSpan
-				);
-			}
+			UGameplayStatics::SpawnDecalAtLocation(GetWorld(), ImpactDecalMat, ImpactDecalSize, HitResult.ImpactPoint + N, (-N).Rotation(), 20.f);
 		}
 	}
 
