@@ -52,6 +52,10 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> ShootEndAction = nullptr;
 
+	// Action to aim
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputAction> AimAction = nullptr;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Attack, meta=(AllowPrivateAccess = "true"))
 	TObjectPtr<USoundCue> ShootSound = nullptr;
 
@@ -79,6 +83,10 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Attack, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UNiagaraSystem> BulletBeamNiagara = nullptr;
 
+	// Is Aiming
+	UPROPERTY(BlueprintReadOnly, Category = Attack, meta = (AllowPrivateAccess = "true"))
+	bool bIsAiming = false;
+
 	// Function to move in all directions
 	void Move(const FInputActionValue& Value);
 
@@ -90,6 +98,12 @@ protected:
 
 	// Method call when releasing the shooting button
 	void ShootButtonReleased();
+
+	// Method call when aiming started
+	void OnAimStarted();
+
+	// Method call when aiming ended
+	void OnAimReleased();
 
 public:	
 	// Called every frame
