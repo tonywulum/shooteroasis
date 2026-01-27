@@ -103,6 +103,88 @@ void AShooterCharacter::ShootButttonPressed()
 	if (!BarrelSocket) return;
 
 	const FTransform SocketTransform = BarrelSocket->GetSocketTransform(GetMesh());
+	const FVector MuzzleStart = SocketTransform.GetLocation();
+
+	if (MuzzleFlashNiagara)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), MuzzleFlashNiagara, MuzzleStart, SocketTransform.GetRotation().Rotator());
+	}
+
+	// Get Current Size of the Viewport
+	FVector2D ViewportSize;
+	if (GEngine && GEngine->GameViewport)
+	{
+		GEngine->GameViewport->GetViewportSize(ViewportSize);
+	}
+
+	// Get Screen Locatrion of Crosshair
+	FVector2D CrosshairLocation = FVector2D(ViewportSize.X / 2.f, ViewportSize.Y / 2.f);
+
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (!PC) return;
+
+	// De-project the Screen Position of the Crosshair to a World Direction
+	FVector CameraWorldPos;
+	FVector CameraWorldDir;
+	const bool bDeproject = UGameplayStatics::DeprojectScreenToWorld(PC, CrosshairLocation, CameraWorldPos, CameraWorldDir);
+	if (!bDeproject) return;
+
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(ShootTrace), true);
+	Params.AddIgnoredActor(this);
+
+	// 1) Trace from camera along crosshair world direction
+	const float TraceRange = 50'000.f;
+	const FVector AimTraceStart = CameraWorldPos;
+	const FVector AimTraceEnd = AimTraceStart + (CameraWorldDir * TraceRange);
+
+	FHitResult AimHit;
+	const bool bAimHit = GetWorld()->LineTraceSingleByChannel(AimHit, AimTraceStart, AimTraceEnd, ECC_Visibility, Params);
+
+	const FVector AimPoint = bAimHit ? AimHit.ImpactPoint : AimTraceEnd;
+
+	// 2) Trace from muzzle to AimPoint (prevents shooting through walls)
+	FHitResult MuzzleHit;
+	const float MuzzleTraceRadius = 3.0f;
+	const bool bMuzzleHit = GetWorld()->SweepSingleByChannel(MuzzleHit, MuzzleStart, AimPoint, FQuat::Identity, ECC_Visibility, 
+		FCollisionShape::MakeSphere(MuzzleTraceRadius), Params);
+	const bool bMuzzleBlockingHit = bMuzzleHit && MuzzleHit.bBlockingHit;
+	const FVector FinalImpacPoint = bMuzzleBlockingHit ? MuzzleHit.ImpactPoint : AimPoint;
+
+	// Beam VFX: muzzle to impact point
+	if (BulletBeamNiagara)
+	{
+		UNiagaraComponent* BeamComp = UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), BulletBeamNiagara, 
+			MuzzleStart, SocketTransform.Rotator());
+
+		if (BeamComp)
+		{
+			BeamComp->SetVectorParameter(FName("Start"), MuzzleStart);
+			BeamComp->SetVectorParameter(FName("Target"), FinalImpacPoint);
+		}
+	}
+
+	// Impact VFX + decal only if we hit something
+	if (bMuzzleBlockingHit)
+	{
+		if (ImpactNiagara)
+		{
+			UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), ImpactNiagara, MuzzleHit.ImpactPoint, 
+				MuzzleHit.ImpactNormal.Rotation());
+		}
+		if (ImpactDecalMat)
+		{
+			const FVector N = MuzzleHit.ImpactNormal.GetSafeNormal();
+			UGameplayStatics::SpawnDecalAtLocation(GetWorld(), ImpactDecalMat, ImpactDecalSize, 
+				MuzzleHit.ImpactPoint + N, (-N).Rotation(), 20.f);
+		}
+	}
+
+
+	/*
+	const USkeletalMeshSocket* BarrelSocket = GetMesh()->GetSocketByName(TEXT("BarrelSocket"));
+	if (!BarrelSocket) return;
+
+	const FTransform SocketTransform = BarrelSocket->GetSocketTransform(GetMesh());
 	const FVector TraceStart = SocketTransform.GetLocation();
 	const FVector TraceEnd = TraceStart + (SocketTransform.GetRotation().GetForwardVector() * 10000.f);
 
@@ -146,6 +228,8 @@ void AShooterCharacter::ShootButttonPressed()
 			UGameplayStatics::SpawnDecalAtLocation(GetWorld(), ImpactDecalMat, ImpactDecalSize, HitResult.ImpactPoint + N, (-N).Rotation(), 20.f);
 		}
 	}
+
+	*/
 
 	static const FName BeginFireSectionName = FName("BeginFire");
 	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
