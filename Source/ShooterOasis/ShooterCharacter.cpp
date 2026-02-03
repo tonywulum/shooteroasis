@@ -93,157 +93,27 @@ void AShooterCharacter::LookAround(const FInputActionValue& Value)
 
 void AShooterCharacter::ShootButttonPressed()
 {
+	PlayShootSfx();
 
-	if (ShootSound)
-	{
-		UGameplayStatics::PlaySoundAtLocation(this, ShootSound, GetActorLocation());
-	}
+	FTransform SocketTransform;
+	FVector MuzzleStart;
+	if (!TryGetMuzzleTransform(SocketTransform, MuzzleStart)) return;
+	
+	SpawnMuzzleFlash(MuzzleStart, SocketTransform);
 
-	const USkeletalMeshSocket* BarrelSocket = GetMesh()->GetSocketByName(TEXT("BarrelSocket"));
-	if (!BarrelSocket) return;
+	FVector AimPoint;
+	if (!TryGetCrosshairAimPoint(AimPoint)) return;
 
-	const FTransform SocketTransform = BarrelSocket->GetSocketTransform(GetMesh());
-	const FVector MuzzleStart = SocketTransform.GetLocation();
-
-	if (MuzzleFlashNiagara)
-	{
-		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), MuzzleFlashNiagara, MuzzleStart, SocketTransform.GetRotation().Rotator());
-	}
-
-	// Get Current Size of the Viewport
-	FVector2D ViewportSize;
-	if (GEngine && GEngine->GameViewport)
-	{
-		GEngine->GameViewport->GetViewportSize(ViewportSize);
-	}
-
-	// Get Screen Locatrion of Crosshair
-	FVector2D CrosshairLocation = FVector2D(ViewportSize.X / 2.f, ViewportSize.Y / 2.f);
-
-	APlayerController* PC = Cast<APlayerController>(GetController());
-	if (!PC) return;
-
-	// De-project the Screen Position of the Crosshair to a World Direction
-	FVector CameraWorldPos;
-	FVector CameraWorldDir;
-	const bool bDeproject = UGameplayStatics::DeprojectScreenToWorld(PC, CrosshairLocation, CameraWorldPos, CameraWorldDir);
-	if (!bDeproject) return;
-
-	FCollisionQueryParams Params(SCENE_QUERY_STAT(ShootTrace), true);
-	Params.AddIgnoredActor(this);
-
-	// 1) Trace from camera along crosshair world direction
-	const float TraceRange = 50'000.f;
-	const FVector AimTraceStart = CameraWorldPos;
-	const FVector AimTraceEnd = AimTraceStart + (CameraWorldDir * TraceRange);
-
-	FHitResult AimHit;
-	const bool bAimHit = GetWorld()->LineTraceSingleByChannel(AimHit, AimTraceStart, AimTraceEnd, ECC_Visibility, Params);
-
-	const FVector AimPoint = bAimHit ? AimHit.ImpactPoint : AimTraceEnd;
-
-	// 2) Trace from muzzle to AimPoint (prevents shooting through walls)
 	FHitResult MuzzleHit;
-	const float MuzzleTraceRadius = 3.0f;
-	const bool bMuzzleHit = GetWorld()->SweepSingleByChannel(MuzzleHit, MuzzleStart, AimPoint, FQuat::Identity, ECC_Visibility, 
-		FCollisionShape::MakeSphere(MuzzleTraceRadius), Params);
-	const bool bMuzzleBlockingHit = bMuzzleHit && MuzzleHit.bBlockingHit;
-	const FVector FinalImpacPoint = bMuzzleBlockingHit ? MuzzleHit.ImpactPoint : AimPoint;
-
-	// Beam VFX: muzzle to impact point
-	if (BulletBeamNiagara)
+	const FVector FinalImpactPoint = ResolveMuzzleToAim(MuzzleStart, AimPoint, MuzzleHit);
+	
+	SpawnBeamVfx(MuzzleStart, FinalImpactPoint, SocketTransform);
+	if (MuzzleHit.bBlockingHit)
 	{
-		UNiagaraComponent* BeamComp = UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), BulletBeamNiagara, 
-			MuzzleStart, SocketTransform.Rotator());
-
-		if (BeamComp)
-		{
-			BeamComp->SetVectorParameter(FName("Start"), MuzzleStart);
-			BeamComp->SetVectorParameter(FName("Target"), FinalImpacPoint);
-		}
+		SpawnImpactVfxAndDecal(MuzzleHit);
 	}
 
-	// Impact VFX + decal only if we hit something
-	if (bMuzzleBlockingHit)
-	{
-		if (ImpactNiagara)
-		{
-			UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), ImpactNiagara, MuzzleHit.ImpactPoint, 
-				MuzzleHit.ImpactNormal.Rotation());
-		}
-		if (ImpactDecalMat)
-		{
-			const FVector N = MuzzleHit.ImpactNormal.GetSafeNormal();
-			UGameplayStatics::SpawnDecalAtLocation(GetWorld(), ImpactDecalMat, ImpactDecalSize, 
-				MuzzleHit.ImpactPoint + N, (-N).Rotation(), 20.f);
-		}
-	}
-
-
-	/*
-	const USkeletalMeshSocket* BarrelSocket = GetMesh()->GetSocketByName(TEXT("BarrelSocket"));
-	if (!BarrelSocket) return;
-
-	const FTransform SocketTransform = BarrelSocket->GetSocketTransform(GetMesh());
-	const FVector TraceStart = SocketTransform.GetLocation();
-	const FVector TraceEnd = TraceStart + (SocketTransform.GetRotation().GetForwardVector() * 10000.f);
-
-	if (MuzzleFlashNiagara)
-	{
-		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), MuzzleFlashNiagara, SocketTransform.GetLocation(), SocketTransform.GetRotation().Rotator());
-	}
-
-	// Trace (ignore self)
-	FHitResult HitResult;
-	FCollisionQueryParams Params(SCENE_QUERY_STAT(ShootTrace), true);
-	Params.AddIgnoredActor(this);
-
-	const bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_Visibility, Params);
-
-	const FVector End = bHit ? HitResult.Location : TraceEnd;
-
-	// Spawn beam (instant tracer)
-	if (BulletBeamNiagara)
-	{
-		UNiagaraComponent* BeamComp = UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), BulletBeamNiagara, TraceStart, SocketTransform.Rotator());
-		
-		if (BeamComp)
-		{
-			BeamComp->SetVectorParameter(FName("Start"), TraceStart);
-			BeamComp->SetVectorParameter(FName("Target"), End);
-		}
-	}
-
-	// Impact VFX + decal only if we hit something
-	if (bHit)
-	{
-		if (ImpactNiagara)
-		{
-			UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), ImpactNiagara, HitResult.Location, HitResult.ImpactNormal.Rotation());
-		}
-		if (ImpactDecalMat)
-		{
-			const FVector N = HitResult.ImpactNormal.GetSafeNormal();
-
-			UGameplayStatics::SpawnDecalAtLocation(GetWorld(), ImpactDecalMat, ImpactDecalSize, HitResult.ImpactPoint + N, (-N).Rotation(), 20.f);
-		}
-	}
-
-	*/
-
-	static const FName BeginFireSectionName = FName("BeginFire");
-	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
-	{
-		if (HipFireMontage)
-		{
-			if (!AnimInstance->Montage_IsPlaying(HipFireMontage))
-			{
-				AnimInstance->Montage_Play(HipFireMontage);
-			}
-			AnimInstance->Montage_JumpToSection(BeginFireSectionName, HipFireMontage);
-		}
-	}
-
+	PlayFireMontage();
 }
 
 void AShooterCharacter::ShootButtonReleased()
@@ -299,5 +169,133 @@ void AShooterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 
 	}
 
+}
+
+void AShooterCharacter::PlayShootSfx() const
+{
+	if (ShootSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, ShootSound, GetActorLocation());
+	}
+}
+
+bool AShooterCharacter::TryGetMuzzleTransform(FTransform& OutSocketTransform, FVector& OutMuzzleStart) const
+{
+	const USkeletalMeshComponent* MeshComp = GetMesh();
+	if (!MeshComp) return false;
+
+	const USkeletalMeshSocket* BarrelSocket = MeshComp->GetSocketByName(TEXT("BarrelSocket"));
+	if (!BarrelSocket) return false;
+
+	OutSocketTransform = BarrelSocket->GetSocketTransform(MeshComp);
+	OutMuzzleStart = OutSocketTransform.GetLocation();
+
+	return true;
+}
+
+void AShooterCharacter::SpawnMuzzleFlash(const FVector& MuzzleStart, const FTransform& SocketTransform) const
+{
+	if (MuzzleFlashNiagara)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), MuzzleFlashNiagara, MuzzleStart, SocketTransform.GetRotation().Rotator());
+	}
+}
+
+bool AShooterCharacter::TryGetCrosshairAimPoint(FVector& OutAimPoint) const
+{
+	// Get Current Size of the Viewport
+	if (!GEngine && GEngine->GameViewport) return false;
+
+	FVector2D ViewportSize;
+	GEngine->GameViewport->GetViewportSize(ViewportSize);
+
+	// Get Screen Location of Crosshair
+	const FVector2D CrosshairLocation = FVector2D(ViewportSize.X / 2.f, ViewportSize.Y / 2.f);
+
+	// Get Player Controller
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (!PC) return false;
+
+	// De-project the Screen Position of the Crosshair to a World Direction
+	FVector CameraWorldPos;
+	FVector CameraWorldDir;
+	if (!UGameplayStatics::DeprojectScreenToWorld(PC, CrosshairLocation, CameraWorldPos, CameraWorldDir)) return false;
+
+	// Setup Trace Parameters
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(ShootTrace), true);
+	Params.AddIgnoredActor(this);
+
+	// Trace from camera along crosshair world direction
+	const float TraceRange = 50'000.f;
+	const FVector AimTraceStart = CameraWorldPos;
+	const FVector AimTraceEnd = AimTraceStart + (CameraWorldDir * TraceRange);
+
+	FHitResult AimHit;
+	const bool bAimHit = GetWorld()->LineTraceSingleByChannel(AimHit, AimTraceStart, AimTraceEnd, ECC_Visibility, Params);
+
+	OutAimPoint = bAimHit ? AimHit.ImpactPoint : AimTraceEnd;
+
+	return true;
+}
+
+FVector AShooterCharacter::ResolveMuzzleToAim(const FVector& MuzzleStart, const FVector& AimPoint, FHitResult& OutHit) const
+{
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(ShootTrace), true);
+	Params.AddIgnoredActor(this);
+
+	const float MuzzleTraceRadius = 3.0f;
+
+	const bool bMuzzleHit = GetWorld()->SweepSingleByChannel(OutHit, MuzzleStart, AimPoint, FQuat::Identity, ECC_Visibility,
+		FCollisionShape::MakeSphere(MuzzleTraceRadius), Params);
+
+	const bool bMuzzleBlockingHit = bMuzzleHit && OutHit.bBlockingHit;
+	return bMuzzleBlockingHit ? OutHit.ImpactPoint : AimPoint;
+}
+
+void AShooterCharacter::SpawnBeamVfx(const FVector& Start, const FVector& Target, const FTransform& SocketTransform) const
+{
+	// Beam VFX: muzzle to impact point
+	if (!BulletBeamNiagara) return;
+
+	UNiagaraComponent* BeamComp = UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), BulletBeamNiagara,
+		Start, SocketTransform.Rotator());
+
+	if (BeamComp)
+	{
+		BeamComp->SetVectorParameter(FName("Start"), Start);
+		BeamComp->SetVectorParameter(FName("Target"), Target);
+	}
+}
+
+void AShooterCharacter::SpawnImpactVfxAndDecal(const FHitResult& Hit) const
+{
+	// Impact VFX + decal only if we hit something
+	if (ImpactNiagara)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), ImpactNiagara, Hit.ImpactPoint,
+			Hit.ImpactNormal.Rotation());
+	}
+	if (ImpactDecalMat)
+	{
+		const FVector N = Hit.ImpactNormal.GetSafeNormal();
+		UGameplayStatics::SpawnDecalAtLocation(GetWorld(), ImpactDecalMat, ImpactDecalSize,
+			Hit.ImpactPoint + N, (-N).Rotation(), 20.f);
+	}
+}
+
+void AShooterCharacter::PlayFireMontage() const
+{
+	static const FName BeginFireSectionName = FName("BeginFire");
+	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+	{
+		if (HipFireMontage)
+		{
+			if (!AnimInstance->Montage_IsPlaying(HipFireMontage))
+			{
+				AnimInstance->Montage_Play(HipFireMontage);
+			}
+			AnimInstance->Montage_JumpToSection(BeginFireSectionName, HipFireMontage);
+		}
+	}
 }
 

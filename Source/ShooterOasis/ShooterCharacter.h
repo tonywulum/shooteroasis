@@ -122,6 +122,27 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = CameraSet, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UCameraComponent> PlayerCamera = nullptr;
 
+	// Play shooting sound effect
+	void PlayShootSfx() const;
+
+	// Try to get the muzzle transform and muzzle start location
+	bool TryGetMuzzleTransform(FTransform& OutSocketTransform, FVector& OutMuzzleStart) const;
+	// Spawn Muzzle Flash at the given location and rotation
+	void SpawnMuzzleFlash(const FVector& MuzzleStart, const FTransform& SocketTransform) const;
+
+	// Try to get the crosshair aim point in the world
+	bool TryGetCrosshairAimPoint(FVector& OutAimPoint) const;
+	// Resolve the muzzle to aim point, return the hit result
+	FVector ResolveMuzzleToAim(const FVector& MuzzleStart, const FVector& AimPoint, FHitResult& OutHit) const;
+
+	// Spawn beam VFX from start to target 
+	void SpawnBeamVfx(const FVector& Start, const FVector& Target, const FTransform& SocketTransform) const;
+	// Spawn impact effects and decal at the hit location
+	void SpawnImpactVfxAndDecal(const FHitResult& Hit) const;
+
+	// Play fire montage
+	void PlayFireMontage() const;
+
 public:
 	
 	FORCEINLINE USpringArmComponent* GetCameraBoom() const { return CameraBoom; }		// Return CameraBoom
