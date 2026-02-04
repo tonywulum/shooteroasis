@@ -48,4 +48,7 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Player, meta = (AllowPrivateAccess = "true"))
 	float Speed = 0.0f;
 
+	// Offset yaw to rotate the character to the movement direction when strafing
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Player, meta = (AllowPrivateAccess = "true"))
+	float MovementOffsetYaw = 0.0f;
 };
