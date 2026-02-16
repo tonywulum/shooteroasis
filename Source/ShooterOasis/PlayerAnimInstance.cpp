@@ -19,6 +19,60 @@ void UPlayerAnimInstance::NativeInitializeAnimation()
 
 void UPlayerAnimInstance::UpdateAnimProperties(float DeltaTime)
 {
+	// Re-cache if owner changed or component became invalid
+	APawn* OwnerNow = TryGetPawnOwner();
+	if (OwnerNow != ShooterCharacter || !IsValid(MoveComp))
+	{
+		ShooterCharacter = Cast<AShooterCharacter>(OwnerNow);
+		MoveComp = ShooterCharacter ? ShooterCharacter->GetCharacterMovement() : nullptr;
+	}
+
+	if (!ShooterCharacter || !MoveComp) return;
+
+	const FVector Vel = ShooterCharacter->GetVelocity();
+	Speed = Vel.Size2D();             // I only don't need the component on Z to get the Speed
+
+	// Is in air?
+	bIsInAir = MoveComp->IsFalling();
+
+	// Is the player actively providing movement input?
+	bIsAccelerating = MoveComp->GetCurrentAcceleration().SizeSquared() > KINDA_SMALL_NUMBER;
+
+	// "Moving" can be based on speed in a world space
+	bIsMoving = Vel.SizeSquared2D() > KINDA_SMALL_NUMBER;
+
+
+	const FVector Vel2D(Vel.X, Vel.Y, 0.f);
+	const bool bHasMoveDir = Vel2D.SizeSquared() > 25.f; // tune threshold
+
+	FRotator AimRot = ShooterCharacter->GetControlRotation();
+	AimRot.Pitch = 0.f;
+	AimRot.Roll = 0.f;
+
+	if (bHasMoveDir)
+	{
+		FRotator MoveRot = Vel2D.Rotation();
+		MoveRot.Pitch = 0.f;
+		MoveRot.Roll = 0.f;
+
+		MovementOffsetYaw = UKismetMathLibrary::NormalizedDeltaRotator(MoveRot, AimRot).Yaw;
+
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 0.f, FColor::Yellow,
+				FString::Printf(TEXT("AimRotation Yaw: %f"), AimRot.Yaw));
+			GEngine->AddOnScreenDebugMessage(-1, 0.f, FColor::Green,
+				FString::Printf(TEXT("MovementRotation Yaw: %f"), MoveRot.Yaw));
+		}
+	}
+
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 0.f, FColor::Cyan,
+			FString::Printf(TEXT("MovementOffsetYaw: %f"), MovementOffsetYaw));
+	}
+
+	/*
 	APawn* OwnerNow = TryGetPawnOwner();
 	if (OwnerNow != ShooterCharacter || !IsValid(MoveComp))
 	{
@@ -55,16 +109,18 @@ void UPlayerAnimInstance::UpdateAnimProperties(float DeltaTime)
 
 		MovementOffsetYaw = UKismetMathLibrary::NormalizedDeltaRotator(MoveRot, AimRot).Yaw;
 
-		if (GEngine)
-		{
-			//GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Green, 
-			//	FString::Printf(TEXT("Move Rotation: %f"), MoveRot.Yaw));
-			//GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Green, 
-			//	FString::Printf(TEXT("Aim Rotation: %f"), AimRot.Yaw));
-
-			GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Green, 
-				FString::Printf(TEXT("MovementOffsetYaw: %f"), MovementOffsetYaw));
-		}
+		
 	}
 
+	if (GEngine)
+	{
+		//GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Green, 
+		//	FString::Printf(TEXT("Move Rotation: %f"), MoveRot.Yaw));
+		//GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Green, 
+		//	FString::Printf(TEXT("Aim Rotation: %f"), AimRot.Yaw));
+
+		GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Green,
+			FString::Printf(TEXT("MovementOffsetYaw: %f"), MovementOffsetYaw));
+	}
+	*/
 }
