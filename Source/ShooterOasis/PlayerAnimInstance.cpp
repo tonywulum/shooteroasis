@@ -17,9 +17,16 @@ void UPlayerAnimInstance::NativeInitializeAnimation()
 	}
 }
 
+
+
+
 void UPlayerAnimInstance::UpdateAnimProperties(float DeltaTime)
 {
-	// Re-cache if owner changed or component became invalid
+/*
+	Super::NativeUpdateAnimation(DeltaTime);
+	UpdateAnimProperties(DeltaTime);
+
+	// Re cache if owner changed or component became invalid
 	APawn* OwnerNow = TryGetPawnOwner();
 	if (OwnerNow != ShooterCharacter || !IsValid(MoveComp))
 	{
@@ -30,11 +37,68 @@ void UPlayerAnimInstance::UpdateAnimProperties(float DeltaTime)
 	if (!ShooterCharacter || !MoveComp) return;
 
 	const FVector Vel = ShooterCharacter->GetVelocity();
-	Speed = Vel.Size2D();             // I only don't need the component on Z to get the Speed
+	Speed = Vel.Size2D();
 
-	// Is in air?
+	// In air
 	bIsInAir = MoveComp->IsFalling();
 
+	// Accelerating
+	const FVector Accel = MoveComp->GetCurrentAcceleration();
+	bIsAccelerating = Accel.SizeSquared() > KINDA_SMALL_NUMBER;
+
+	// Moving
+	bIsMoving = Vel.SizeSquared2D() > KINDA_SMALL_NUMBER;
+
+	// Choose a stable movement direction for strafing direction
+	FVector Dir2D = FVector::ZeroVector;
+
+	if (Accel.SizeSquared2D() > KINDA_SMALL_NUMBER)
+	{
+		// Input intent, usually the most stable for BlendSpaces
+		Dir2D = Accel.GetSafeNormal2D();
+	}
+	else if (Vel.SizeSquared2D() > KINDA_SMALL_NUMBER)
+	{
+		// Fallback if no acceleration
+		Dir2D = Vel.GetSafeNormal2D();
+	}
+
+	const bool bHasDir = !Dir2D.IsNearlyZero();
+
+	// Use BaseAimRotation for aim, usually better than ControlRotation for animation
+	FRotator AimRot = ShooterCharacter->GetBaseAimRotation();
+	AimRot.Pitch = 0.f;
+	AimRot.Roll = 0.f;
+
+	if (bHasDir)
+	{
+		const FRotator MoveRot = Dir2D.Rotation();
+
+		float TargetYaw = UKismetMathLibrary::NormalizedDeltaRotator(MoveRot, AimRot).Yaw;
+		TargetYaw = FMath::UnwindDegrees(TargetYaw);
+
+		// Smooth to avoid jitter in the BlendSpace
+		MovementOffsetYaw = FMath::FInterpTo(MovementOffsetYaw, TargetYaw, DeltaTime, 12.f);
+	}
+	else
+	{
+		// No meaningful direction, ease back to neutral
+		MovementOffsetYaw = FMath::FInterpTo(MovementOffsetYaw, 0.f, DeltaTime, 8.f);
+	}
+
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 0.f, FColor::Cyan,
+			FString::Printf(TEXT("Speed: %.2f  OffsetYaw: %.2f"), Speed, MovementOffsetYaw));
+	}
+	*/
+
+
+
+
+
+
+	/*
 	// Is the player actively providing movement input?
 	bIsAccelerating = MoveComp->GetCurrentAcceleration().SizeSquared() > KINDA_SMALL_NUMBER;
 
@@ -71,8 +135,11 @@ void UPlayerAnimInstance::UpdateAnimProperties(float DeltaTime)
 		GEngine->AddOnScreenDebugMessage(-1, 0.f, FColor::Cyan,
 			FString::Printf(TEXT("MovementOffsetYaw: %f"), MovementOffsetYaw));
 	}
+	*/
 
-	/*
+
+	
+	// version 0
 	APawn* OwnerNow = TryGetPawnOwner();
 	if (OwnerNow != ShooterCharacter || !IsValid(MoveComp))
 	{
@@ -122,5 +189,5 @@ void UPlayerAnimInstance::UpdateAnimProperties(float DeltaTime)
 		GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Green,
 			FString::Printf(TEXT("MovementOffsetYaw: %f"), MovementOffsetYaw));
 	}
-	*/
+	
 }
