@@ -28,6 +28,9 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+	// Called every frame
+	virtual void Tick(float DeltaTime) override;
+
 	// Default Player Mapping Context
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")	
 	TObjectPtr<UInputMappingContext> PlayerMappingContext = nullptr;
@@ -105,9 +108,19 @@ protected:
 	// Method call when aiming ended
 	void OnAimReleased();
 
+	// Default Field Of View when not aiming
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = CameraSet, meta = (AllowPrivate = "true"))
+	float CameraDefaultFOV = 90.f;
+
+	// Default Field Of View when aiming
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = CameraSet, meta = (AllowPrivate = "true"))
+	float AimFOV = 60.f;
+
+	// Interp speed for FOV change
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = CameraSet, meta = (AllowPrivate = "true"))
+	float FOVInterpSpeed = 20.f;
+
 public:	
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
 
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
@@ -143,10 +156,15 @@ private:
 	// Play fire montage
 	void PlayFireMontage() const;
 
+	
+
+	// Current FOV, used for smooth transition between default FOV and aim FOV
+	float CurrentFOV;
+
 public:
 	
 	FORCEINLINE USpringArmComponent* GetCameraBoom() const { return CameraBoom; }		// Return CameraBoom
 	FORCEINLINE UCameraComponent* GetPlayerCamera() const { return PlayerCamera; }		// Return PlayerCamera
-
+	FORCEINLINE bool GetIsAiming() const { return bIsAiming; }							// Return if currently aiming
 
 };

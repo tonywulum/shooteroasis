@@ -59,6 +59,12 @@ void AShooterCharacter::BeginPlay()
 		}
 	}
 
+	if (PlayerCamera)
+	{
+		CurrentFOV = CameraDefaultFOV;
+		PlayerCamera->SetFieldOfView(CurrentFOV);
+	}
+
 }
 
 void AShooterCharacter::Move(const FInputActionValue& Value)
@@ -145,6 +151,12 @@ void AShooterCharacter::OnAimReleased()
 void AShooterCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	if (!PlayerCamera) return;
+
+	const float TargetFOV = bIsAiming ? AimFOV : CameraDefaultFOV;
+	CurrentFOV = FMath::FInterpTo(CurrentFOV, TargetFOV, DeltaTime, FOVInterpSpeed);
+	PlayerCamera->SetFieldOfView(CurrentFOV);
 
 }
 

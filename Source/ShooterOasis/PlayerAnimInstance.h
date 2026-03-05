@@ -51,4 +51,8 @@ private:
 	// Offset yaw to rotate the character to the movement direction when strafing
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Player, meta = (AllowPrivateAccess = "true"))
 	float MovementOffsetYaw = 0.0f;
+
+	// True if the character is aiming, false otherwise
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Player, meta = (AllowPrivateAccess = "true"))
+	bool bIsAiming = false;
 };
