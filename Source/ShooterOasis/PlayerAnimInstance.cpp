@@ -69,7 +69,10 @@ void UPlayerAnimInstance::UpdateAnimProperties(float DeltaTime)
 		GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Green,
 			FString::Printf(TEXT("MovementOffsetYaw: %f"), MovementOffsetYaw));
 	}
-
-	bIsAiming = ShooterCharacter->GetIsAiming();
 	
+}
+
+void UPlayerAnimInstance::SetIsAiming(bool bAiming)
+{
+	bIsAiming = bAiming;
 }

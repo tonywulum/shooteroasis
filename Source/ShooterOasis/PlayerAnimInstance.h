@@ -55,4 +55,8 @@ private:
 	// True if the character is aiming, false otherwise
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Player, meta = (AllowPrivateAccess = "true"))
 	bool bIsAiming = false;
+
+public:
+
+	void SetIsAiming(bool bAiming);
 };

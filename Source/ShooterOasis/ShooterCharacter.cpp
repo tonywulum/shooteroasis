@@ -18,6 +18,8 @@
 #include "Animation/AnimInstance.h"
 #include "DrawDebugHelpers.h"
 
+#include "PlayerAnimInstance.h"
+
 
 // Sets default values
 AShooterCharacter::AShooterCharacter()
@@ -135,6 +137,11 @@ void AShooterCharacter::OnAimStarted()
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Green, TEXT("Aiming started"));
 	}
+
+	if (UPlayerAnimInstance* AnimInstance = Cast<UPlayerAnimInstance>(GetMesh()->GetAnimInstance()))
+	{
+		AnimInstance->SetIsAiming(true);
+	}
 }
 
 void AShooterCharacter::OnAimReleased()
@@ -145,6 +152,12 @@ void AShooterCharacter::OnAimReleased()
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Red, TEXT("Aiming ended"));
 	}
+
+	if (UPlayerAnimInstance* AnimInstance = Cast<UPlayerAnimInstance>(GetMesh()->GetAnimInstance()))
+	{
+		AnimInstance->SetIsAiming(false);
+	}
+
 }
 
 // Called every frame
