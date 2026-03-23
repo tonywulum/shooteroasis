@@ -22,7 +22,7 @@ class SHOOTEROASIS_API AShooterCharacter : public ACharacter
 
 public:
 	// Sets default values for this character's properties
-	AShooterCharacter();
+	AShooterCharacter(); 
 
 protected:
 	// Called when the game starts or when spawned
@@ -95,6 +95,18 @@ protected:
 
 	/* Look up or down base and in yaw by using mouse movement or right gamepad y movement */
 	void LookAround(const FInputActionValue& Value);
+
+	// Yaw and Pitch sensitivity when NOT aiming, aka hip firing
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CameraSet", meta = (AllowPrivateAccess = "true"))
+	float HipYawSensitivity = 1.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CameraSet", meta = (AllowPrivateAccess = "true"))
+	float HipPitchSensitivity = 1.f;
+
+	// Yaw and Pitch sensitivity when aiming, usually smaller than hip firing sensitivity for better control
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CameraSet", meta = (AllowPrivateAccess = "true"))
+	float AimYawSensitivity = 0.35f;	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CameraSet", meta = (AllowPrivateAccess = "true"))
+	float AimPitchSensitivity = 0.35f;
 
 	// Method call when shooting a weapon
 	void ShootButttonPressed();

@@ -92,11 +92,18 @@ void AShooterCharacter::Move(const FInputActionValue& Value)
 void AShooterCharacter::LookAround(const FInputActionValue& Value)
 {
 	const FVector2D LookAroundVector = Value.Get<FVector2D>();
-	const float TurnScaleFactor = 1.0f;
-	AddControllerYawInput(LookAroundVector.X * TurnScaleFactor);
+	//const float TurnScaleFactor = 1.0f;
+	//AddControllerYawInput(LookAroundVector.X * TurnScaleFactor);
 
-	const float LookUpScaleFactor = 1.0f;
-	AddControllerPitchInput(LookAroundVector.Y * LookUpScaleFactor);
+	//const float LookUpScaleFactor = 1.0f;
+	//AddControllerPitchInput(LookAroundVector.Y * LookUpScaleFactor);
+
+	const FVector2D LookVector = Value.Get<FVector2D>();
+	const float YawSensitivity = bIsAiming ? AimYawSensitivity : HipYawSensitivity;
+	const float PitchSensitivity = bIsAiming ? AimPitchSensitivity : HipPitchSensitivity;
+
+	AddControllerYawInput(LookVector.X * YawSensitivity);
+	AddControllerPitchInput(LookVector.Y * PitchSensitivity);
 }
 
 void AShooterCharacter::ShootButttonPressed()
