@@ -173,10 +173,83 @@ private:
 	// Current FOV, used for smooth transition between default FOV and aim FOV
 	float CurrentFOV;
 
+	// Update the camera's FOV smoothly when aiming or not aiming
+	void UpdateCameraFOV(float DeltaTime);
+	
+	// Update all crosshairs spread values every frame
+	void UpdateCrosshairSpread(float DeltaTime);
+
+	// Update spread caused by movement speed
+	void UpdateMovementSpread();
+
+	// Update spread caused by being in the air
+	void UpdateInAirSpread();
+
+	// Recover temporary shooting spread over time
+	void RecoverShootingSpread(float DeltaTime);
+
+	// Combine all spread contributions into the final current spread
+	void CalculateCurrentCrosshairSpread();
+
+	// Add spread when the player fires
+	void AddShootingSpread();
+
+	// Return horizontal speed normalized from 0 to 1;
+	float GetNormalizedMovementSpeed() const;
+
+	// Base spread always present, even while standing still
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crosshair", meta = (AllowPrivateAccess = "true"))
+	float BaseCrosshairSpread = 8.0f;
+
+	// Final spread used by the HUD
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Crosshair", meta = (AllowPrivateAccess = "true"))
+	float CurrentCrosshairSpread = 0.0f;
+
+	// Current spread contribution from movement
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Crosshair", meta = (AllowPrivateAccess = "true"))
+	float MovementSpread = 0.0f;
+
+	// Current spread contribution from being in the air
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Crosshair", meta = (AllowPrivateAccess = "true"))
+	float InAirSpread = 0.0f;
+
+	// Current temporary spread contribution from firing
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Crosshair", meta = (AllowPrivateAccess = "true"))
+	float ShootingSpread = 0.0f;
+
+	// Maximum movement spread
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crosshair", meta = (AllowPrivateAccess = "true"))
+	float MaxMovementSpread = 12.0f;
+
+	// Max Spread penalty while in the air
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crosshair", meta = (AllowPrivateAccess = "true"))
+	float MaxInAirSpread = 18.0f;
+
+	// Spread added every time the player fires
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crosshair", meta = (AllowPrivateAccess = "true"))
+	float ShootingSpreadIncrement = 4.0f;
+
+	// Maximum shooting spread that can accumulate
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crosshair", meta = (AllowPrivateAccess = "true"))
+	float MaxShootingSpread = 16.0f;
+
+	// Recovery speed for shooting spread
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crosshair", meta = (AllowPrivateAccess = "true"))
+	float SpreadRecoverySpeed = 20.0f;
+
+	// Multiplier applied when aiming
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crosshair", meta = (AllowPrivateAccess = "true"))
+	float AimSpreadMultiplier = 0.6f;
+
+	// Final clamp for total spread
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crosshair", meta = (AllowPrivateAccess = "true"))
+	float MaxCrosshairSpread = 40.0f;
+
 public:
 	
 	FORCEINLINE USpringArmComponent* GetCameraBoom() const { return CameraBoom; }		// Return CameraBoom
 	FORCEINLINE UCameraComponent* GetPlayerCamera() const { return PlayerCamera; }		// Return PlayerCamera
 	FORCEINLINE bool GetIsAiming() const { return bIsAiming; }							// Return if currently aiming
+	FORCEINLINE float GetCrosshairSpread() const { return CurrentCrosshairSpread; }		// Return the current value of the crosshair spread
 
 };

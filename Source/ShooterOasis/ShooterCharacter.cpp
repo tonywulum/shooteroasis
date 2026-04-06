@@ -172,12 +172,8 @@ void AShooterCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (!PlayerCamera) return;
-
-	const float TargetFOV = bIsAiming ? AimFOV : CameraDefaultFOV;
-	CurrentFOV = FMath::FInterpTo(CurrentFOV, TargetFOV, DeltaTime, FOVInterpSpeed);
-	PlayerCamera->SetFieldOfView(CurrentFOV);
-
+	UpdateCameraFOV(DeltaTime);
+	UpdateCrosshairSpread(DeltaTime);
 }
 
 // Called to bind functionality to input
@@ -236,7 +232,7 @@ void AShooterCharacter::SpawnMuzzleFlash(const FVector& MuzzleStart, const FTran
 bool AShooterCharacter::TryGetCrosshairAimPoint(FVector& OutAimPoint) const
 {
 	// Get Current Size of the Viewport
-	if (!GEngine && GEngine->GameViewport) return false;
+	if (!GEngine || GEngine->GameViewport) return false;
 
 	FVector2D ViewportSize;
 	GEngine->GameViewport->GetViewportSize(ViewportSize);
@@ -329,5 +325,50 @@ void AShooterCharacter::PlayFireMontage() const
 			AnimInstance->Montage_JumpToSection(BeginFireSectionName, HipFireMontage);
 		}
 	}
+}
+
+void AShooterCharacter::UpdateCameraFOV(float DeltaTime)
+{
+	if (!PlayerCamera) return;
+
+	const float TargetFOV = bIsAiming ? AimFOV : CameraDefaultFOV;
+	CurrentFOV = FMath::FInterpTo(CurrentFOV, TargetFOV, DeltaTime, FOVInterpSpeed);
+	PlayerCamera->SetFieldOfView(CurrentFOV);
+}
+
+void AShooterCharacter::UpdateCrosshairSpread(float DeltaTime)
+{
+	// Update each contributor to crosshair spread
+	UpdateMovementSpread();
+	UpdateInAirSpread();
+	RecoverShootingSpread(DeltaTime);
+
+	// Combine all contributions into the final spread value
+	CalculateCurrentCrosshairSpread();
+}
+
+void AShooterCharacter::UpdateMovementSpread()
+{
+}
+
+void AShooterCharacter::UpdateInAirSpread()
+{
+}
+
+void AShooterCharacter::RecoverShootingSpread(float DeltaTime)
+{
+}
+
+void AShooterCharacter::CalculateCurrentCrosshairSpread()
+{
+}
+
+void AShooterCharacter::AddShootingSpread()
+{
+}
+
+float AShooterCharacter::GetNormalizedMovementSpeed() const
+{
+	return 0.0f;
 }
 
