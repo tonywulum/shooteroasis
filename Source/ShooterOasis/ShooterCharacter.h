@@ -183,7 +183,7 @@ private:
 	void UpdateMovementSpread();
 
 	// Update spread caused by being in the air
-	void UpdateInAirSpread();
+	void UpdateInAirSpread(float DeltaTime);
 
 	// Recover temporary shooting spread over time
 	void RecoverShootingSpread(float DeltaTime);
@@ -244,6 +244,12 @@ private:
 	// Final clamp for total spread
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crosshair", meta = (AllowPrivateAccess = "true"))
 	float MaxCrosshairSpread = 40.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crosshair", meta = (AllowPrivateAccess = "true"))
+	float MaxTrackedAirSpeed = 1000.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crosshair", meta = (AllowPrivateAccess = "true"))
+	float InAirSpreadInterpSpeed = 8.0f;
 
 public:
 	

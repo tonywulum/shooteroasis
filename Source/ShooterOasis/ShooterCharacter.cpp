@@ -109,6 +109,7 @@ void AShooterCharacter::LookAround(const FInputActionValue& Value)
 void AShooterCharacter::ShootButttonPressed()
 {
 	PlayShootSfx();
+	AddShootingSpread();
 
 	FTransform SocketTransform;
 	FVector MuzzleStart;
@@ -232,7 +233,7 @@ void AShooterCharacter::SpawnMuzzleFlash(const FVector& MuzzleStart, const FTran
 bool AShooterCharacter::TryGetCrosshairAimPoint(FVector& OutAimPoint) const
 {
 	// Get Current Size of the Viewport
-	if (!GEngine || GEngine->GameViewport) return false;
+	if (!GEngine || !GEngine->GameViewport) return false;
 
 	FVector2D ViewportSize;
 	GEngine->GameViewport->GetViewportSize(ViewportSize);
@@ -307,7 +308,7 @@ void AShooterCharacter::SpawnImpactVfxAndDecal(const FHitResult& Hit) const
 	{
 		const FVector N = Hit.ImpactNormal.GetSafeNormal();
 		UGameplayStatics::SpawnDecalAtLocation(GetWorld(), ImpactDecalMat, ImpactDecalSize,
-			Hit.ImpactPoint + N, (-N).Rotation(), 20.f);
+			Hit.ImpactPoint + N, (-N).Rotation(), ImpactDecalLifeSpan);
 	}
 }
 
@@ -340,35 +341,84 @@ void AShooterCharacter::UpdateCrosshairSpread(float DeltaTime)
 {
 	// Update each contributor to crosshair spread
 	UpdateMovementSpread();
-	UpdateInAirSpread();
+	UpdateInAirSpread(DeltaTime);
 	RecoverShootingSpread(DeltaTime);
 
 	// Combine all contributions into the final spread value
 	CalculateCurrentCrosshairSpread();
+
+	GEngine->AddOnScreenDebugMessage(
+		-1,	
+		0.f, 
+		FColor::Green, 
+		FString::Printf(TEXT("Spread: %.2f"), CurrentCrosshairSpread));
 }
 
 void AShooterCharacter::UpdateMovementSpread()
 {
+	const float SpeedAlpha = GetNormalizedMovementSpeed();
+	MovementSpread = SpeedAlpha * MaxMovementSpread;
 }
 
-void AShooterCharacter::UpdateInAirSpread()
+void AShooterCharacter::UpdateInAirSpread(float DeltaTime)
 {
+	const UCharacterMovementComponent* MovementComp = GetCharacterMovement();
+	if (!MovementComp)
+	{
+		InAirSpread = 0.f;
+		return;
+	}
+
+	const bool bIsInAir = MovementComp->IsFalling();
+	float TargetInAirSpread = 0.0f;
+
+	if (bIsInAir)
+	{
+		const float VerticalSpeed = FMath::Abs(GetVelocity().Z);
+		const float FallSpeedAlpha = FMath::Clamp(VerticalSpeed / MaxTrackedAirSpeed, 0.f, 1.f);
+		TargetInAirSpread = FallSpeedAlpha * MaxInAirSpread;
+	}
+
+	InAirSpread = FMath::FInterpTo(InAirSpread, TargetInAirSpread, DeltaTime, InAirSpreadInterpSpeed);
 }
 
 void AShooterCharacter::RecoverShootingSpread(float DeltaTime)
 {
+	ShootingSpread = FMath::FInterpTo(ShootingSpread, 0.f, DeltaTime, SpreadRecoverySpeed);
 }
 
 void AShooterCharacter::CalculateCurrentCrosshairSpread()
 {
+	float FinalSpread = 
+		BaseCrosshairSpread +
+		MovementSpread +
+		InAirSpread +
+		ShootingSpread;
+
+	if (bIsAiming)
+	{
+		FinalSpread *= AimSpreadMultiplier;
+	}
+
+	CurrentCrosshairSpread = FMath::Clamp(FinalSpread, 0.0f, MaxCrosshairSpread);
 }
 
 void AShooterCharacter::AddShootingSpread()
 {
+	ShootingSpread = FMath::Clamp(ShootingSpread + ShootingSpreadIncrement, 0.f, MaxShootingSpread);
 }
 
 float AShooterCharacter::GetNormalizedMovementSpeed() const
 {
-	return 0.0f;
+	const FVector HoritonzalVelocity(GetVelocity().X, GetVelocity().Y, 0.0f);
+	const float CurrentSpeed = HoritonzalVelocity.Size();
+
+	const UCharacterMovementComponent* MovementComp = GetCharacterMovement();
+	if (!MovementComp || MovementComp->MaxWalkSpeed <= 0.0f)
+	{
+		return 0.0f;
+	}
+
+	return FMath::Clamp(CurrentSpeed / MovementComp->MaxWalkSpeed, 0.f, 1.f);
 }
 
