@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "InputActionValue.h"
+#include "TimerManager.h"
 #include "ShooterCharacter.generated.h"
 
 class UInputMappingContext;
@@ -47,13 +48,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> JumpAction = nullptr;
 
-	// Action when start shooting
+	/* Input action use to control firing the weapon, it will call StartFire and StopFire*/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
-	TObjectPtr<UInputAction> ShootStartAction = nullptr;
-
-	// Action when ending shooting
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
-	TObjectPtr<UInputAction> ShootEndAction = nullptr;
+	TObjectPtr<UInputAction> FireAction = nullptr;
 
 	// Action to aim
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
@@ -108,12 +105,6 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CameraSet", meta = (AllowPrivateAccess = "true"))
 	float AimPitchSensitivity = 0.35f;
 
-	// Method call when shooting a weapon
-	void ShootButttonPressed();
-
-	// Method call when releasing the shooting button
-	void ShootButtonReleased();
-
 	// Method call when aiming started
 	void OnAimStarted();
 
@@ -131,6 +122,39 @@ protected:
 	// Interp speed for FOV change
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = CameraSet, meta = (AllowPrivate = "true"))
 	float FOVInterpSpeed = 20.f;
+
+	/* Starts the automatic fire loop when the player begins the fire input.
+	   Fires one shot immediately, then start a timer for repeated fire*/
+	void StartFire();
+
+	/* Stops the automatic fire loop when the player releases the fire input. 
+	   Clears the timer to stop repeated fire*/
+	void StopFire();
+
+	/* Called repeatedly by the timer manager while automatic fire is active.
+	   This function validates firing conditions and executes one shot*/
+	void HandleAutoFire();
+
+	/* Returns whether the character is currently allowed to fire.
+	   This centralizes future checks such as ammo, reload, or weapon state. */
+	bool CanFireShot() const;
+
+	/* Called when the actor leaves play.
+	   Use here to clear the automatic fire timer safely. */
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
+	/* Fires a single shot from the weapon.
+	   This keeps the actual firing behaviour separate from input and timer control*/
+	void FireShot();
+
+	/* True while the player is holding the fire input and the automatic fire loop is active*/
+	bool bIsFiring = false; 
+
+	/* Handle used by Unreal's timer manager to control repeated firing */
+	FTimerHandle AutoFireTimerHandle;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack", meta = (ClampMin = "0.01"))
+	float TimeBetweenShots = 0.12f; // 600 RPM
 
 public:	
 

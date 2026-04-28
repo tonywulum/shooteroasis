@@ -106,37 +106,6 @@ void AShooterCharacter::LookAround(const FInputActionValue& Value)
 	AddControllerPitchInput(LookVector.Y * PitchSensitivity);
 }
 
-void AShooterCharacter::ShootButttonPressed()
-{
-	PlayShootSfx();
-	AddShootingSpread();
-
-	FTransform SocketTransform;
-	FVector MuzzleStart;
-	if (!TryGetMuzzleTransform(SocketTransform, MuzzleStart)) return;
-	
-	SpawnMuzzleFlash(MuzzleStart, SocketTransform);
-
-	FVector AimPoint;
-	if (!TryGetCrosshairAimPoint(AimPoint)) return;
-
-	FHitResult MuzzleHit;
-	const FVector FinalImpactPoint = ResolveMuzzleToAim(MuzzleStart, AimPoint, MuzzleHit);
-	
-	SpawnBeamVfx(MuzzleStart, FinalImpactPoint, SocketTransform);
-	if (MuzzleHit.bBlockingHit)
-	{
-		SpawnImpactVfxAndDecal(MuzzleHit);
-	}
-
-	PlayFireMontage();
-}
-
-void AShooterCharacter::ShootButtonReleased()
-{
-	UE_LOG(LogTemp, Warning, TEXT("Shoot button released"));
-}
-
 void AShooterCharacter::OnAimStarted()
 {
 	bIsAiming = true;
@@ -168,6 +137,103 @@ void AShooterCharacter::OnAimReleased()
 
 }
 
+void AShooterCharacter::StartFire()
+{
+	// Prevent the fire loop from starting more than once
+	if (bIsFiring) return;
+
+	// Do not start firing if the weapon is not allowed to fire
+	if (!CanFireShot()) return;
+
+	bIsFiring = true;
+
+	// Fire immediately so the weapon feels responsive on button pressed
+	FireShot();
+
+	// Validate again in case the first shot changed the firing state
+	if (!CanFireShot())
+	{
+		StopFire();
+		return;
+	}
+
+	// Start the repeating fire loop
+	GetWorldTimerManager().SetTimer(
+		AutoFireTimerHandle,
+		this,
+		&AShooterCharacter::HandleAutoFire,
+		TimeBetweenShots,
+		true);
+}
+
+void AShooterCharacter::StopFire()
+{
+	bIsFiring = false;
+	GetWorldTimerManager().ClearTimer(AutoFireTimerHandle);
+}
+
+void AShooterCharacter::HandleAutoFire()
+{
+	// If the player is no longer firing, stop the loop
+	if (!bIsFiring)
+	{
+		StopFire();
+		return;
+	}
+
+	// If the weapon can no longer fire, stop the loop safely
+	if (!CanFireShot())
+	{
+		StopFire();
+		return;
+	}
+
+	FireShot();
+
+	// Check again after firing in case the shot changed the condition
+	if (!CanFireShot())
+	{
+		StopFire();
+	}
+}
+
+bool AShooterCharacter::CanFireShot() const
+{
+	return true;
+}
+
+void AShooterCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	GetWorldTimerManager().ClearTimer(AutoFireTimerHandle);
+	Super::EndPlay(EndPlayReason);
+}
+
+void AShooterCharacter::FireShot()
+{
+	PlayShootSfx();
+	AddShootingSpread();
+
+	FTransform SocketTransform;
+	FVector MuzzleStart;
+	if (!TryGetMuzzleTransform(SocketTransform, MuzzleStart)) return;
+
+	SpawnMuzzleFlash(MuzzleStart, SocketTransform);
+
+	FVector AimPoint;
+	if (!TryGetCrosshairAimPoint(AimPoint)) return;
+
+	FHitResult MuzzleHit;
+	const FVector FinalImpactPoint = ResolveMuzzleToAim(MuzzleStart, AimPoint, MuzzleHit);
+
+	SpawnBeamVfx(MuzzleStart, FinalImpactPoint, SocketTransform);
+	if (MuzzleHit.bBlockingHit)
+	{
+		SpawnImpactVfxAndDecal(MuzzleHit);
+	}
+
+	PlayFireMontage();
+}
+
 // Called every frame
 void AShooterCharacter::Tick(float DeltaTime)
 {
@@ -190,11 +256,12 @@ void AShooterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &AShooterCharacter::Jump);
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &AShooterCharacter::StopJumping);
 
-		EnhancedInputComponent->BindAction(ShootStartAction, ETriggerEvent::Triggered, this, &AShooterCharacter::ShootButttonPressed);
-		EnhancedInputComponent->BindAction(ShootEndAction, ETriggerEvent::Triggered, this, &AShooterCharacter::ShootButtonReleased);
-
 		EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Started, this, &AShooterCharacter::OnAimStarted);
 		EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Completed, this, &AShooterCharacter::OnAimReleased);
+
+		EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Started, this, &AShooterCharacter::StartFire);
+		EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Completed, this, &AShooterCharacter::StopFire);
+		EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Canceled, this, &AShooterCharacter::StopFire); 
 
 	}
 
